@@ -4,6 +4,8 @@
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC--BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
+[![Maker World - Air Quality Monitor by Chris3D](https://makerworld.com/en/models/1977297-air-quality-sensor-esphome-for-home-assistant#profileId-2126773)
+
 # Description
 
 ## 🌿 Air Quality Monitor (ESP32-S3 + ESPHome + Home Assistant)

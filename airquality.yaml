@@ -106,12 +106,12 @@ script:
           call.set_effect(selected_effect);
           call.perform();
 
-  # SCRIPT 2: Runs when IAQ *value* changes (every 10s)
+# SCRIPT 2: Runs when IAQ *value* changes (every 10s)
   - id: update_led_color
     then:
       - lambda: |-
           if (!id(iaq_reading).has_state()) {
-            return; // Exit script if the IAQ sensor isn't ready
+            return; 
           }
           
           std::string quality = id(iaq_reading).state;
@@ -127,15 +127,24 @@ script:
           else if (quality == "Poor") { r = 1.0; g = 0.0; b = 0.0; }
           else if (quality == "Unhealthy") { 
             r = 1.0; g = 0.0; b = 1.0; 
-            // If we are unhealthy, we must force the Alert Flash
+            // Force Alert Flash and EXIT
             id(led).turn_on().set_rgb(r, g, b).set_effect("Alert Flash").perform();
-            return; // Stop here
+            return; 
           }
 
-          // --- 2. Apply changes based on mode ---
+          // --- 2. If we are here, AQ is OK. Reset Effect! ---
           auto call = id(led).turn_on();
-          call.set_rgb(r, g, b); // Always update color
+          call.set_rgb(r, g, b); 
           
+          // Determine which effect to restore based on the Select Mode
+          std::string restore_effect = "None";
+          if (mode == "Breathing") restore_effect = "Breathing";
+          else if (mode == "Scanner") restore_effect = "Scanner";
+          
+          // Explicitly set the effect (This stops the Alert Flash)
+          call.set_effect(restore_effect);
+
+          // --- 3. Apply Brightness ---
           if (mode == "Auto") {
             float brightness = 0.15;
             if (isnan(lux)) lux = 0;
@@ -146,8 +155,6 @@ script:
           } else if (mode == "Manual") {
             call.set_brightness(id(iaq_led_brightness).state);
           }
-          // If mode is Breathing or Scanner, we *only* update the color.
-          // By not calling .set_effect(), the animation continues smoothly.
           
           call.perform();
 globals:
@@ -164,25 +171,25 @@ globals:
 # Enable Home Assistant API
 api:
   encryption:
-    key: "replace with your key"
+    key: "fChXbbQkxNtAotqSa+yKbfg4u7V4GSXUcShOA+UJtkQ="
 
 ota:
   - platform: esphome
-    password: "replace with your password"
+    password: "ac2c3af7307298a7778280baf7bf8d05"
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
   manual_ip:
-    static_ip: 192.168.1.61
-    gateway: 192.168.1.1
+    static_ip: 192.168.10.61
+    gateway: 192.168.10.1
     subnet: 255.255.255.0
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Aq-Monitor Fallback Hotspot"
-    password: "replace with your password"
+    password: "wWI6TZEcjx7Q"
 
 captive_portal:
 
@@ -605,6 +612,10 @@ text_sensor:
     icon: "mdi:air-filter"
     id: iaq_reading
     lambda: |-
+      // 1. Safety Check: Ensure all sensors have valid numbers
+      if (isnan(id(humi).state) || isnan(id(pm25).state) || isnan(id(eco2).state) || isnan(id(tvoc).state)) {
+        return {}; // Return nothing/unknown until sensors are warm
+      }
       id(iaq_index) = 0;
 
       if (id(humi).state < 10 or id(humi).state > 90) {
@@ -804,6 +815,7 @@ switch:
     icon: mdi:theme-light-dark
     restore_mode: RESTORE_DEFAULT_ON
     optimistic: true
+    internal: true
 
 interval:
   - interval: 60s
